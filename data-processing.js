@@ -260,7 +260,45 @@ function createRouteGeoJSON(routeName) {
             if (i === 0 && routePoints.length > 0) {
                 bearing = routePoints[routePoints.length - 1].properties.bearing;
             } else {
-                // Calculate bearing directly without smoothing
+                // Calculate lookAheadPoint for bearing
+                let lookAheadPoint;
+                if (i < pointsNeeded) {
+                    // Calculate a point ahead for bearing calculation
+                    const lookAheadProgress = Math.min(1, progress + 0.05);
+                    let lookAheadCumDistance = 0;
+                    let lookAheadSegStart = 0;
+                    
+                    for (let j = 1; j < coordinates.length; j++) {
+                        const segDistance = turf.distance(
+                            turf.point(coordinates[j-1]),
+                            turf.point(coordinates[j]),
+                            { units: 'kilometers' }
+                        );
+                        
+                        if (lookAheadCumDistance + segDistance >= totalDistance * lookAheadProgress) {
+                            lookAheadSegStart = j - 1;
+                            break;
+                        }
+                        lookAheadCumDistance += segDistance;
+                    }
+                    
+                    const lookAheadSegProgress = (totalDistance * lookAheadProgress - lookAheadCumDistance) / 
+                        turf.distance(
+                            turf.point(coordinates[lookAheadSegStart]),
+                            turf.point(coordinates[lookAheadSegStart + 1]),
+                            { units: 'kilometers' }
+                        );
+                    
+                    lookAheadPoint = [
+                        coordinates[lookAheadSegStart][0] + (coordinates[lookAheadSegStart + 1][0] - coordinates[lookAheadSegStart][0]) * lookAheadSegProgress,
+                        coordinates[lookAheadSegStart][1] + (coordinates[lookAheadSegStart + 1][1] - coordinates[lookAheadSegStart][1]) * lookAheadSegProgress
+                    ];
+                } else {
+                    // Use the endpoint for the last point
+                    lookAheadPoint = coordinates[coordinates.length - 1];
+                }
+                
+                // Calculate bearing using lookAheadPoint
                 bearing = calculateBearing(interpolatedPoint, lookAheadPoint);
             }
             
@@ -386,3 +424,11 @@ async function fetchDirectionsRoute(startCoords, endCoords) {
         throw error;
     }
 }
+
+// At the end of the file, add exports for functions needed by other modules
+export {
+    handleFileImport,
+    processData,
+    fetchDirectionsRoute,
+    createRouteGeoJSON
+};

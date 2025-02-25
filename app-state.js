@@ -12,8 +12,25 @@ import {
 } from './route-planning.js';
 // Import functions from route-completion.js
 import {
-    initializeLayerControls
+    initializeLayerControls,
+    showRouteCompletionModal,
+    setupRouteCompletionEvents
 } from './route-completion.js';
+// Import functions from data-processing.js
+import {
+    handleFileImport,
+    processData
+} from './data-processing.js';
+// Import utility functions
+import {
+    showNotification,
+    createNotificationsContainer,
+    formatTime,
+    formatDateForInput,
+    formatTimeForInput,
+    formatDateTime,
+    generateUniqueId
+} from './utils.js';
 
 // Application State
 const AppState = {
@@ -309,8 +326,8 @@ function setupEventListeners() {
     // Complete route button
     document.getElementById('completeRouteButton').addEventListener('click', () => {
         // Use the globally available function if it exists, otherwise show an error
-        if (typeof window.showRouteCompletionModal === 'function') {
-            window.showRouteCompletionModal();
+        if (typeof showRouteCompletionModal === 'function') {
+            showRouteCompletionModal();
         } else {
             showNotification('Route completion functionality not loaded', 'error');
         }
@@ -322,37 +339,6 @@ function updatePlaybackButtonState() {
     const button = document.getElementById('playButton');
     const icon = button.querySelector('.material-icons');
     icon.textContent = AppState.animation.isPlaying ? 'pause' : 'play_arrow';
-}
-
-// Notification System
-function createNotificationsContainer() {
-    if (!document.getElementById('notificationsContainer')) {
-        const container = document.createElement('div');
-        container.className = 'notifications-container';
-        container.id = 'notificationsContainer';
-        document.body.appendChild(container);
-    }
-    return document.getElementById('notificationsContainer');
-}
-
-function showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
-    notification.className = `notification ${type}`;
-    notification.innerHTML = `
-        <span class="notification-icon material-icons">
-            ${type === 'error' ? 'error' : type === 'warning' ? 'warning' : 'info'}
-        </span>
-        <span class="notification-message">${message}</span>
-    `;
-    
-    const container = document.getElementById('notificationsContainer') || 
-                     createNotificationsContainer();
-    container.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.classList.add('fade-out');
-        setTimeout(() => notification.remove(), 500);
-    }, 3000);
 }
 
 // Map Style Preview Updates
@@ -380,30 +366,7 @@ function initializeSettingsTabs() {
     });
 }
 
-// Time Formatting Utilities
-function formatTime(seconds) {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = Math.floor(seconds % 60);
-    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-}
-
-function formatDateForInput(date) {
-    return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
-}
-
-function formatTimeForInput(date) {
-    return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
-}
-
-function formatDateTime(date) {
-    return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
-}
-
-// Unique ID Generation
-function generateUniqueId() {
-    return 'id-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
-}
+// Time utilities moved to utils.js
 
 // Initialize when document is ready
 document.addEventListener('DOMContentLoaded', initializeApp);

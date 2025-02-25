@@ -1,5 +1,15 @@
 // Import the setupRouteCompletionEvents function from route-completion.js
 import { setupRouteCompletionEvents } from './route-completion.js';
+// Import utility functions
+import { 
+    showNotification,
+    formatTime,
+    formatDateForInput,
+    formatTimeForInput,
+    generateUniqueId
+} from './utils.js';
+// Import from data-processing.js
+import { fetchDirectionsRoute } from './data-processing.js';
 
 // Update visualizations
 function updateWaypointsLayer() {
@@ -681,12 +691,13 @@ function updateSubsequentTimestamps(startWaypoint) {
     }
 }
 
-// Export the functions needed by app-state.js
+// Export the functions needed by app-state.js and route-completion.js
 export { 
     initializePlanningSystem,
     togglePlanningMode,
     updateWaypointsLayer,
     updateRouteSegmentsLayer,
     setupWaypointInteraction,
-    handleMapClick
+    handleMapClick,
+    showTimestampModal
 };

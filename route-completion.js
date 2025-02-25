@@ -2,6 +2,20 @@
 // import AppState from './app-state.js'; 
 // If using the global AppState, this import is not needed
 
+// Import utility functions
+import { 
+    formatTime, 
+    formatDateTime, 
+    generateUniqueId,
+    showNotification
+} from './utils.js';
+
+// Import from data-processing.js
+import { processData, createRouteGeoJSON } from './data-processing.js';
+
+// Import from route-planning.js
+import { showTimestampModal, togglePlanningMode } from './route-planning.js';
+
 function updateSubsequentTimestamps(startWaypoint) {
     // Find next segment
     const nextSegment = AppState.planningMode.routeSegments.find(
@@ -27,6 +41,37 @@ function updateSubsequentTimestamps(startWaypoint) {
         
         // Recursively update subsequent waypoints
         updateSubsequentTimestamps(endWaypoint);
+    }
+}
+
+// Add missing vehicle initialization function
+function initializeVehicle() {
+    if (!AppState.map.getSource('vehicle')) {
+        AppState.map.addSource('vehicle', {
+            type: 'geojson',
+            data: {
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [0, 0]
+                },
+                properties: {
+                    bearing: 0
+                }
+            }
+        });
+        
+        AppState.map.addLayer({
+            id: 'vehicle',
+            type: 'symbol',
+            source: 'vehicle',
+            layout: {
+                'icon-image': 'vehicle-marker',
+                'icon-size': 1,
+                'icon-allow-overlap': true,
+                'icon-rotate': ['get', 'bearing']
+            }
+        });
     }
 }
 
@@ -463,4 +508,9 @@ window.setupRouteCompletionEvents = setupRouteCompletionEvents;
 window.initializeLayerControls = initializeLayerControls;
 
 // Also export functions for modules that prefer imports
-export { showRouteCompletionModal, setupRouteCompletionEvents, initializeLayerControls };
+export { 
+    showRouteCompletionModal, 
+    setupRouteCompletionEvents, 
+    initializeLayerControls, 
+    initializeVehicle 
+};
