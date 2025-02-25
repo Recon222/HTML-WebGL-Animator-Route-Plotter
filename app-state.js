@@ -144,6 +144,36 @@ async function initializeMap(token) {
 
     // Wait for map to load
     await new Promise(resolve => AppState.map.on('load', resolve));
+    
+    // Load vehicle marker image
+    AppState.map.loadImage(
+        'https://docs.mapbox.com/mapbox-gl-js/assets/custom_marker.png', // Default marker as fallback
+        (error, image) => {
+            if (error) {
+                console.error('Error loading marker image:', error);
+                return;
+            }
+            
+            // Add the image to the map style
+            if (!AppState.map.hasImage('vehicle-marker')) {
+                AppState.map.addImage('vehicle-marker', image);
+            }
+        }
+    );
+    
+    // Also add a listener for missing images
+    AppState.map.on('styleimagemissing', (e) => {
+        if (e.id === 'vehicle-marker') {
+            // Load a default marker if our custom one is missing
+            AppState.map.loadImage(
+                'https://docs.mapbox.com/mapbox-gl-js/assets/custom_marker.png',
+                (error, image) => {
+                    if (error) throw error;
+                    AppState.map.addImage('vehicle-marker', image);
+                }
+            );
+        }
+    });
 
     // Initialize components
     await initializeComponents();

@@ -155,6 +155,12 @@ class UnifiedAnimationController {
     }
 
     updatePosition(time) {
+        // Check if we have valid track data
+        if (!this.trackData || !this.trackData.features || this.trackData.features.length === 0) {
+            console.warn('No valid track data available for position update');
+            return;
+        }
+        
         // Find appropriate track points
         const targetTime = this.trackData.timeRange.start + (time * 1000);
         let nextIndex = this.trackData.features.findIndex(
@@ -166,8 +172,18 @@ class UnifiedAnimationController {
         }
         const prevIndex = Math.max(0, nextIndex - 1);
 
+        // Add null checks before accessing properties
         const prev = this.trackData.features[prevIndex];
+        if (!prev || !prev.properties) {
+            console.warn('Previous track point is invalid');
+            return;
+        }
+        
         const next = this.trackData.features[nextIndex] || prev;
+        if (!next || !next.properties) {
+            console.warn('Next track point is invalid');
+            return;
+        }
 
         // Calculate interpolation factor
         const prevTime = prev.properties.timestamp;
