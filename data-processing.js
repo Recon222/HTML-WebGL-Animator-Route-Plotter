@@ -145,6 +145,11 @@ function processData(data) {
     AppState.animation.currentPoint = 0;
     AppState.animation.isPlaying = false;
 
+    // Pass the data to the animation controller
+    if (AppState.animationController) {
+        AppState.animationController.setTrackData(data);
+    }
+
     // Calculate bounds
     const bounds = new mapboxgl.LngLatBounds();
     data.features.forEach(feature => {
