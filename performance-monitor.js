@@ -74,42 +74,52 @@ class PerformanceMonitor {
             lastFlush: performance.now()
         };
 
+        this.fps = 0;
+        this.frameCount = 0;
+        this.lastTime = performance.now();
+        this.fpsElement = document.getElementById('fps-counter');
+        
         // Bind methods
         this.update = this.update.bind(this);
         this.monitorLoop = this.monitorLoop.bind(this);
     }
 
+    update() {
+        this.frameCount++;
+        const currentTime = performance.now();
+        const elapsedTime = currentTime - this.lastTime;
+        
+        if (elapsedTime >= 1000) {
+            this.fps = Math.round((this.frameCount * 1000) / elapsedTime);
+            this.frameCount = 0;
+            this.lastTime = currentTime;
+            
+            if (this.fpsElement) {
+                this.fpsElement.textContent = `FPS: ${this.fps}`;
+            }
+        }
+    }
+    
+    monitorLoop() {
+        if (!this.state.isMonitoring) return;
+        this.update();
+        requestAnimationFrame(this.monitorLoop);
+    }
+    
     start() {
         if (this.state.isMonitoring) return;
-        
         this.state.isMonitoring = true;
         this.state.lastUpdate = performance.now();
-        
-        // Start monitoring loop
-        requestAnimationFrame(this.monitorLoop);
+        this.state.frameCount = 0;
+        this.state.lastTime = performance.now();
+        this.monitorLoop();
         
         // Start periodic detailed analysis
         this.startDetailedAnalysis();
     }
-
+    
     stop() {
         this.state.isMonitoring = false;
-    }
-
-    monitorLoop(timestamp) {
-        if (!this.state.isMonitoring) return;
-
-        // Calculate basic metrics
-        this.updateBasicMetrics(timestamp);
-
-        // Check for performance issues
-        this.checkPerformance();
-
-        // Buffer event data
-        this.bufferPerformanceEvent();
-
-        // Request next frame
-        requestAnimationFrame(this.monitorLoop);
     }
 
     updateBasicMetrics(timestamp) {
