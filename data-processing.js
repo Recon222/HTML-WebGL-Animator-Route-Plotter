@@ -1,3 +1,5 @@
+import { showNotification, formatTime } from './utils.js';
+
 async function handleFileImport(file) {
     try {
         const fileType = file.name.split('.').pop().toLowerCase();
@@ -425,10 +427,85 @@ async function fetchDirectionsRoute(startCoords, endCoords) {
     }
 }
 
+// Update the timeline display
+function updateTimeline() {
+    const timelineContent = document.getElementById('timelineContent');
+    if (!timelineContent || !AppState.data || AppState.data.features.length === 0) return;
+    
+    // Clear existing timeline
+    timelineContent.innerHTML = '';
+    
+    // Create a trip group
+    const tripGroup = document.createElement('div');
+    tripGroup.className = 'trip-group';
+    
+    // Add trip header with data information
+    const tripName = AppState.data.properties?.name || 'Imported Track';
+    const pointCount = AppState.data.features.length;
+    const duration = formatTime(AppState.animation.duration);
+    
+    tripGroup.innerHTML = `
+        <div class="trip-header">
+            <h4>${tripName}</h4>
+            <div class="trip-stats">
+                <span>${pointCount} points</span>
+                <span>${duration}</span>
+            </div>
+        </div>
+    `;
+    
+    timelineContent.appendChild(tripGroup);
+}
+
+// Update the playback time displays and progress bar
+function updatePlaybackDisplay() {
+    // Update the playback time displays
+    document.getElementById('currentTime').textContent = formatTime(AppState.animation.currentTime);
+    document.getElementById('totalTime').textContent = formatTime(AppState.animation.duration);
+    
+    // Update progress bar
+    const percent = (AppState.animation.currentTime / AppState.animation.duration) * 100;
+    document.getElementById('progressFill').style.width = `${percent}%`;
+}
+
+// Update the vehicle position on the map
+function updateVehiclePosition() {
+    // Find the appropriate feature for the current time
+    if (!AppState.data || AppState.data.features.length === 0) return;
+    
+    const features = AppState.data.features;
+    const currentTime = AppState.animation.currentTime;
+    
+    // Find the feature corresponding to the current time
+    let idx = 0;
+    while (idx < features.length - 1 && features[idx].properties.elapsedTime < currentTime) {
+        idx++;
+    }
+    
+    const feature = features[idx];
+    
+    // Update vehicle position on map
+    if (AppState.map && AppState.map.getSource('vehicle')) {
+        AppState.map.getSource('vehicle').setData({
+            type: 'Feature',
+            geometry: {
+                type: 'Point',
+                coordinates: feature.geometry.coordinates
+            },
+            properties: {
+                bearing: feature.properties.bearing || 0
+            }
+        });
+    }
+}
+
 // At the end of the file, add exports for functions needed by other modules
 export {
     handleFileImport,
     processData,
     fetchDirectionsRoute,
-    createRouteGeoJSON
+    createRouteGeoJSON,
+    updateTimeline,
+    updatePlaybackDisplay,
+    updateVehiclePosition
 };
