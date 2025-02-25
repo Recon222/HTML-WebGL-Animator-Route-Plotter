@@ -677,3 +677,13 @@ function updateSubsequentTimestamps(startWaypoint) {
         updateSubsequentTimestamps(endWaypoint);
     }
 }
+
+// Export the functions needed by app-state.js
+export { 
+    initializePlanningSystem,
+    togglePlanningMode,
+    updateWaypointsLayer,
+    updateRouteSegmentsLayer,
+    setupWaypointInteraction,
+    handleMapClick
+};

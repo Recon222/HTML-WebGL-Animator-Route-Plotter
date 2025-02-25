@@ -5,6 +5,11 @@
 import WebGLVehicleLayer from './webgl-vehicle-layer.js';
 import UnifiedAnimationController from './unified-animation.js';
 import PerformanceMonitor from './performance-monitor.js';
+// Import functions from route-planning.js
+import { 
+    initializePlanningSystem,
+    togglePlanningMode 
+} from './route-planning.js';
 
 // Application State
 const AppState = {
@@ -80,6 +85,9 @@ const AppState = {
         this.listeners.forEach(listener => listener(this));
     }
 };
+
+// Make AppState globally available to avoid circular dependencies
+window.AppState = AppState;
 
 // Initialize Application
 async function initializeApp() {
@@ -295,9 +303,14 @@ function setupEventListeners() {
     );
     
     // Complete route button
-    document.getElementById('completeRouteButton').addEventListener('click',
-        showRouteCompletionModal
-    );
+    document.getElementById('completeRouteButton').addEventListener('click', () => {
+        // Use the globally available function if it exists, otherwise show an error
+        if (typeof window.showRouteCompletionModal === 'function') {
+            window.showRouteCompletionModal();
+        } else {
+            showNotification('Route completion functionality not loaded', 'error');
+        }
+    });
 }
 
 // UI Update Functions
@@ -390,5 +403,3 @@ function generateUniqueId() {
 
 // Initialize when document is ready
 document.addEventListener('DOMContentLoaded', initializeApp);
-
-export default AppState;

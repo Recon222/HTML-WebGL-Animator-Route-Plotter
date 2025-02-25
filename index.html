@@ -386,6 +386,195 @@
             padding: 1.5rem;
         }
 
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .close-button {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color var(--transition-fast);
+        }
+
+        .close-button:hover {
+            color: var(--text-color);
+        }
+
+        /* Timestamp Modal Specific Styles */
+        .timestamp-type-selector {
+            margin-bottom: 1.25rem;
+        }
+
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        .radio-group label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+
+        .timestamp-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .info-box {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--background-light);
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        /* Route Completion Modal Specific Styles */
+        .route-summary {
+            margin: 1.5rem 0;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .summary-item {
+            background: var(--background-light);
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .summary-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .waypoints-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+        }
+
+        .waypoint-item {
+            padding: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .waypoint-item:last-child {
+            border-bottom: none;
+        }
+
+        .waypoint-marker {
+            width: 2rem;
+            height: 2rem;
+            background: var(--primary-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .waypoint-details {
+            flex: 1;
+        }
+
+        .waypoint-coordinates {
+            font-size: 0.875rem;
+        }
+
+        .waypoint-timestamp {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .timestamp-badge {
+            padding: 0.125rem 0.375rem;
+            border-radius: 0.25rem;
+            font-size: 0.625rem;
+            text-transform: uppercase;
+        }
+
+        .timestamp-badge.confirmed {
+            background: var(--success-color);
+        }
+
+        .timestamp-badge.estimated {
+            background: var(--warning-color);
+        }
+
+        .edit-timestamp-button {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .edit-timestamp-button:hover {
+            color: var(--primary-color);
+        }
+
+        /* Input Styles */
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .input-group label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .input-group input {
+            background: var(--background-light);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            transition: border-color var(--transition-fast);
+        }
+
+        .input-group input:focus {
+            border-color: var(--primary-color);
+            outline: none;
+        }
+        
         /* Settings Modal Specific */
         .settings-tabs {
             display: flex;
@@ -769,6 +958,122 @@
 
     <!-- Notifications Container -->
     <div class="notifications-container" id="notificationsContainer"></div>
+
+    <!-- Timestamp Modal -->
+    <div id="timestampModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Set Waypoint Time</h3>
+                <button id="closeTimestampModal" class="close-button">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Setting timestamp for waypoint <span id="waypointOrder">1</span></p>
+                
+                <div class="timestamp-type-selector">
+                    <h4>Timestamp Type</h4>
+                    <div class="radio-group">
+                        <label>
+                            <input type="radio" name="timestampType" id="timestampTypeNone" value="none">
+                            No specific time
+                        </label>
+                        <label>
+                            <input type="radio" name="timestampType" id="timestampTypeEstimated" value="estimated" checked>
+                            Estimated time
+                        </label>
+                        <label>
+                            <input type="radio" name="timestampType" id="timestampTypeConfirmed" value="confirmed">
+                            Confirmed time
+                        </label>
+                    </div>
+                </div>
+                
+                <div id="timestampInputContainer">
+                    <div class="timestamp-inputs">
+                        <div class="input-group">
+                            <label for="timestampDate">Date</label>
+                            <input type="date" id="timestampDate">
+                        </div>
+                        <div class="input-group">
+                            <label for="timestampTime">Time</label>
+                            <input type="time" id="timestampTime" step="1">
+                        </div>
+                    </div>
+                    
+                    <div id="estimatedTimestampInfo" class="info-box">
+                        <span class="material-icons">info</span>
+                        Estimated arrival: <span id="estimatedTimestamp">00:00:00</span> into journey
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button id="dismissTimestampButton" class="button-base">
+                        Skip for now
+                    </button>
+                    <button id="saveTimestampButton" class="button-primary">
+                        Save Timestamp
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Route Completion Modal -->
+    <div id="routeCompletionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Complete Route</h3>
+                <button id="closeRouteCompletionModal" class="close-button">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <label for="routeName">Route Name</label>
+                    <input type="text" id="routeName" placeholder="Enter a name for this route">
+                </div>
+                
+                <div class="route-summary">
+                    <h4>Route Summary</h4>
+                    <div class="summary-grid">
+                        <div class="summary-item">
+                            <span class="summary-label">Total Distance</span>
+                            <span class="summary-value" id="totalDistance">0.00 km</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Total Duration</span>
+                            <span class="summary-value" id="totalDuration">00:00:00</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Start Time</span>
+                            <span class="summary-value" id="startTime">Not set</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">End Time</span>
+                            <span class="summary-value" id="endTime">Not set</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="waypoints-list-container">
+                    <h4>Waypoints</h4>
+                    <div id="waypointsList" class="waypoints-list">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button id="cancelCompletionButton" class="button-base">
+                        Cancel
+                    </button>
+                    <button id="completeRouteButton" class="button-primary">
+                        Create Route
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Module Imports -->
     <script type="module" src="webgl-vehicle-layer.js"></script>

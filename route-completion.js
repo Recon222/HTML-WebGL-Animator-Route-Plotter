@@ -1,3 +1,7 @@
+// At the top of file, if needed
+// import AppState from './app-state.js'; 
+// If using the global AppState, this import is not needed
+
 function updateSubsequentTimestamps(startWaypoint) {
     // Find next segment
     const nextSegment = AppState.planningMode.routeSegments.find(
