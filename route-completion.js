@@ -456,3 +456,11 @@ function calculateDistance(coordinates) {
     }
     return totalDistance;
 }
+
+// Make functions globally available to avoid circular dependencies
+window.showRouteCompletionModal = showRouteCompletionModal;
+window.setupRouteCompletionEvents = setupRouteCompletionEvents;
+window.initializeLayerControls = initializeLayerControls;
+
+// Also export functions for modules that prefer imports
+export { showRouteCompletionModal, setupRouteCompletionEvents, initializeLayerControls };

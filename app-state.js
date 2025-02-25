@@ -10,6 +10,10 @@ import {
     initializePlanningSystem,
     togglePlanningMode 
 } from './route-planning.js';
+// Import functions from route-completion.js
+import {
+    initializeLayerControls
+} from './route-completion.js';
 
 // Application State
 const AppState = {

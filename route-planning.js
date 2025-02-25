@@ -1,3 +1,6 @@
+// Import the setupRouteCompletionEvents function from route-completion.js
+import { setupRouteCompletionEvents } from './route-completion.js';
+
 // Update visualizations
 function updateWaypointsLayer() {
     if (!AppState.map.getSource('waypoints')) return;
