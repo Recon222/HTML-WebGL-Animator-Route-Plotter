@@ -1,6 +1,9 @@
 // position-worker.js
 // Web Worker for physics-based position calculations and smoothing
 
+// Enable this flag to print detailed debug info in console
+const DEBUG = true;
+
 // Constants and configuration
 const CONFIG = {
     // Physics parameters
@@ -19,6 +22,13 @@ const CONFIG = {
     mercatorScale: 1 / (2 * Math.PI),  // Standard Mercator scale
     maxLatitude: 85.051129        // Maximum latitude in Web Mercator
 };
+
+// Add debug log function
+function debugLog(...args) {
+    if (DEBUG) {
+        console.log('[PositionWorker]', ...args);
+    }
+}
 
 // State management
 let state = {
@@ -140,11 +150,132 @@ const Physics = {
             };
         }
         return acc;
+    },
+    
+    // Linear interpolation between two points
+    lerpPosition(pos1, pos2, t) {
+        return {
+            lng: pos1.lng + (pos2.lng - pos1.lng) * t,
+            lat: pos1.lat + (pos2.lat - pos1.lat) * t
+        };
+    },
+    
+    // Spherical linear interpolation (slerp) between two points
+    slerpPosition(pos1, pos2, t) {
+        // Convert to Cartesian coordinates
+        const phi1 = GeoMath.toRadians(90 - pos1.lat);
+        const theta1 = GeoMath.toRadians(pos1.lng);
+        const phi2 = GeoMath.toRadians(90 - pos2.lat);
+        const theta2 = GeoMath.toRadians(pos2.lng);
+        
+        // Convert to 3D Cartesian coordinates
+        const x1 = Math.sin(phi1) * Math.cos(theta1);
+        const y1 = Math.sin(phi1) * Math.sin(theta1);
+        const z1 = Math.cos(phi1);
+        
+        const x2 = Math.sin(phi2) * Math.cos(theta2);
+        const y2 = Math.sin(phi2) * Math.sin(theta2);
+        const z2 = Math.cos(phi2);
+        
+        // Compute dot product
+        const dot = x1 * x2 + y1 * y2 + z1 * z2;
+        
+        // If points are very close, use linear interpolation
+        if (dot > 0.9999) {
+            return this.lerpPosition(pos1, pos2, t);
+        }
+        
+        // Compute angle between vectors
+        const omega = Math.acos(Math.max(-1, Math.min(1, dot)));
+        const sinOmega = Math.sin(omega);
+        
+        // Compute interpolation factors
+        const factor1 = Math.sin((1 - t) * omega) / sinOmega;
+        const factor2 = Math.sin(t * omega) / sinOmega;
+        
+        // Interpolate 3D coordinates
+        const x = x1 * factor1 + x2 * factor2;
+        const y = y1 * factor1 + y2 * factor2;
+        const z = z1 * factor1 + z2 * factor2;
+        
+        // Convert back to lat/lng
+        const phi = Math.acos(z);
+        const theta = Math.atan2(y, x);
+        
+        return {
+            lat: 90 - GeoMath.toDegrees(phi),
+            lng: GeoMath.toDegrees(theta)
+        };
     }
 };
 
 // Process new position data
 function processPosition(newPosition, timestamp) {
+    if (DEBUG) {
+        debugLog('Processing new position data:', newPosition);
+        debugLog('Timestamp:', timestamp);
+        debugLog('Current state:', JSON.stringify(state));
+    }
+    
+    // Check if this is an interpolation request with an interpolation factor
+    if ('t' in newPosition && newPosition.targetLng !== undefined && newPosition.targetLat !== undefined) {
+        debugLog('Interpolation requested with t:', newPosition.t);
+        
+        // Get source and target positions
+        const sourcePos = { 
+            lng: newPosition.lng, 
+            lat: newPosition.lat 
+        };
+        
+        const targetPos = { 
+            lng: newPosition.targetLng, 
+            lat: newPosition.targetLat 
+        };
+        
+        // Use spherical interpolation for smoother movement
+        const interpolatedPos = Physics.slerpPosition(
+            sourcePos, 
+            targetPos, 
+            newPosition.t
+        );
+        
+        debugLog('Source position:', sourcePos);
+        debugLog('Target position:', targetPos);
+        debugLog('Interpolated position:', interpolatedPos);
+        
+        // Get source and target bearings
+        const sourceBearing = newPosition.bearing || 0;
+        const targetBearing = newPosition.targetBearing || sourceBearing;
+        
+        // Smoothly interpolate bearing
+        let interpolatedBearing;
+        if (Math.abs(targetBearing - sourceBearing) > 180) {
+            // Handle bearing wraparound
+            const adjustedTarget = targetBearing > sourceBearing ? targetBearing - 360 : targetBearing + 360;
+            interpolatedBearing = sourceBearing + (adjustedTarget - sourceBearing) * newPosition.t;
+        } else {
+            interpolatedBearing = sourceBearing + (targetBearing - sourceBearing) * newPosition.t;
+        }
+        
+        // Normalize bearing to 0-360 range
+        interpolatedBearing = GeoMath.normalizeBearing(interpolatedBearing);
+        
+        debugLog('Source bearing:', sourceBearing);
+        debugLog('Target bearing:', targetBearing);
+        debugLog('Interpolated bearing:', interpolatedBearing);
+        
+        // Estimate speed based on distance and time difference
+        const distance = GeoMath.calculateDistance(sourcePos, targetPos);
+        
+        // Update state with interpolated values
+        state.position = interpolatedPos;
+        state.bearing = interpolatedBearing;
+        state.lastTimestamp = timestamp;
+        
+        debugLog('Updated state:', JSON.stringify(state));
+        return state;
+    }
+
     // Initialize state if needed
     if (!state.position) {
         state.position = newPosition;
@@ -159,16 +290,22 @@ function processPosition(newPosition, timestamp) {
 
     // Calculate distance and bearing
     const distance = GeoMath.calculateDistance(state.position, newPosition);
+    debugLog('Distance to new position:', distance, 'meters');
+    
     let newBearing = state.lastValidBearing;
 
     if (distance > CONFIG.minSpeedThreshold) {
         newBearing = GeoMath.calculateBearing(state.position, newPosition);
         state.lastValidBearing = newBearing;
+        debugLog('New bearing calculated:', newBearing);
     }
 
     // Update velocity and acceleration
     const newVelocity = Physics.updateVelocity(state.position, newPosition, deltaTime);
     const newAcceleration = Physics.updateAcceleration(state.velocity, newVelocity, deltaTime);
+    
+    debugLog('New velocity:', newVelocity);
+    debugLog('New acceleration:', newAcceleration);
     
     // Apply smoothing and constraints
     state.velocity = {
@@ -186,10 +323,15 @@ function processPosition(newPosition, timestamp) {
     }
 
     // Update position with smoothing
+    const rawPosition = newPosition;
     state.position = {
-        lng: Physics.smooth(state.position.lng, newPosition.lng, CONFIG.positionSmoothing),
-        lat: Physics.smooth(state.position.lat, newPosition.lat, CONFIG.positionSmoothing)
+        lng: Physics.smooth(state.position.lng, rawPosition.lng, CONFIG.positionSmoothing),
+        lat: Physics.smooth(state.position.lat, rawPosition.lat, CONFIG.positionSmoothing)
     };
+    
+    debugLog('Raw position:', rawPosition);
+    debugLog('Smoothed position:', state.position);
+    debugLog('Smoothing factor:', CONFIG.positionSmoothing);
 
     state.lastTimestamp = timestamp;
     
@@ -206,15 +348,21 @@ self.onmessage = function(e) {
     }
 
     try {
+        debugLog('Received message:', e.data);
         const updatedState = processPosition(position, timestamp);
-        self.postMessage({
+        
+        const response = {
             position: updatedState.position,
             bearing: updatedState.bearing,
             speed: updatedState.speed,
             velocity: updatedState.velocity,
             timestamp: updatedState.lastTimestamp
-        });
+        };
+        
+        debugLog('Sending response:', response);
+        self.postMessage(response);
     } catch (error) {
+        console.error('Error processing position:', error);
         self.postMessage({ error: error.message });
     }
 };

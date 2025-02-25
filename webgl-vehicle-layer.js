@@ -14,6 +14,15 @@ class WebGLVehicleLayer {
             frameCount: 0
         };
 
+        // Debug settings
+        this.debug = {
+            enabled: true,
+            lastPosition: null,
+            lastUpdate: performance.now(),
+            updateHistory: [],
+            maxHistoryItems: 10
+        };
+
         // Configurable settings
         this.settings = {
             updateInterval: 16,  // ~60fps
@@ -92,6 +101,11 @@ class WebGLVehicleLayer {
                 }
             });
 
+            // Create debug trail layer if debugging is enabled
+            if (this.debug.enabled) {
+                this.initializeDebugLayers();
+            }
+
             // Setup performance monitoring
             this.map.on('render', () => this.monitorPerformance());
 
@@ -102,6 +116,113 @@ class WebGLVehicleLayer {
             throw error;
         }
     }
+    
+    initializeDebugLayers() {
+        // Add source for position trail
+        this.map.addSource('debug-trail', {
+            type: 'geojson',
+            data: {
+                type: 'FeatureCollection',
+                features: []
+            }
+        });
+        
+        // Add trail line layer
+        this.map.addLayer({
+            id: 'debug-trail-line',
+            type: 'line',
+            source: 'debug-trail',
+            layout: {
+                'line-join': 'round',
+                'line-cap': 'round'
+            },
+            paint: {
+                'line-color': '#ff0000',
+                'line-width': 2,
+                'line-opacity': 0.7
+            }
+        });
+        
+        // Add points layer
+        this.map.addLayer({
+            id: 'debug-trail-points',
+            type: 'circle',
+            source: 'debug-trail',
+            paint: {
+                'circle-radius': 4,
+                'circle-color': '#ffff00',
+                'circle-opacity': 0.7
+            }
+        });
+    }
+    
+    updateDebugTrail(coordinates) {
+        if (!this.debug.enabled || !this.isInitialized) return;
+        
+        const source = this.map.getSource('debug-trail');
+        if (!source) return;
+        
+        // Add this position to history if different from last one
+        if (!this.debug.lastPosition || 
+            this.debug.lastPosition[0] !== coordinates[0] || 
+            this.debug.lastPosition[1] !== coordinates[1]) {
+            
+            // Add update to history
+            this.debug.updateHistory.push({
+                coordinates: coordinates,
+                timestamp: performance.now(),
+                timeSinceLast: this.debug.lastPosition ? 
+                    performance.now() - this.debug.lastUpdate : 0
+            });
+            
+            // Trim history if needed
+            if (this.debug.updateHistory.length > 50) {
+                this.debug.updateHistory.shift();
+            }
+            
+            // Update trail
+            const features = this.debug.updateHistory.map((update, index) => ({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: update.coordinates
+                },
+                properties: {
+                    index: index,
+                    timestamp: update.timestamp,
+                    timeDelta: update.timeSinceLast
+                }
+            }));
+            
+            // Add line feature if we have at least 2 points
+            if (features.length > 1) {
+                features.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: this.debug.updateHistory.map(u => u.coordinates)
+                    },
+                    properties: {}
+                });
+            }
+            
+            // Update the source
+            source.setData({
+                type: 'FeatureCollection',
+                features: features
+            });
+            
+            // Store current position and time
+            this.debug.lastPosition = coordinates;
+            this.debug.lastUpdate = performance.now();
+            
+            // Log to console
+            if (this.debug.enabled) {
+                console.log('[WebGLLayer] Position update:', coordinates, 
+                            'Time since last update:', this.debug.updateHistory[this.debug.updateHistory.length-1].timeSinceLast.toFixed(1), 'ms');
+            }
+        }
+    }
 
     updatePosition(coordinates, bearing, speed, timestamp) {
         if (!this.isInitialized) return;
@@ -109,12 +230,23 @@ class WebGLVehicleLayer {
         const source = this.map.getSource('vehicle-webgl');
         if (!source) return;
 
+        // Debug timing
+        const now = performance.now();
+        const timeSinceLastUpdate = now - (this.currentState.timestamp || now);
+        
+        // Debug position updates
+        if (this.debug.enabled) {
+            console.log('[WebGLLayer] Rendering position update:', coordinates);
+            console.log('[WebGLLayer] Time since last render:', timeSinceLastUpdate.toFixed(1), 'ms');
+            console.log('[WebGLLayer] Bearing:', bearing, 'Speed:', speed);
+        }
+
         // Update current state
         this.currentState = {
             position: coordinates,
             bearing: bearing || this.currentState.bearing,
             speed: speed || 0,
-            timestamp: timestamp || performance.now()
+            timestamp: now
         };
 
         // Update GeoJSON source
@@ -129,6 +261,14 @@ class WebGLVehicleLayer {
                 speed: speed
             }
         });
+        
+        // Update debug trail
+        this.updateDebugTrail(coordinates);
+    }
+
+    // Get current position for other components
+    getCurrentPosition() {
+        return this.currentState.position;
     }
 
     animate(timestamp) {
@@ -240,6 +380,19 @@ class WebGLVehicleLayer {
         
         if (this.map.getSource('vehicle-webgl')) {
             this.map.removeSource('vehicle-webgl');
+        }
+        
+        // Cleanup debug layers
+        if (this.debug.enabled) {
+            if (this.map.getLayer('debug-trail-line')) {
+                this.map.removeLayer('debug-trail-line');
+            }
+            if (this.map.getLayer('debug-trail-points')) {
+                this.map.removeLayer('debug-trail-points');
+            }
+            if (this.map.getSource('debug-trail')) {
+                this.map.removeSource('debug-trail');
+            }
         }
 
         this.isInitialized = false;

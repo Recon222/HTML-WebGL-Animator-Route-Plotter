@@ -54,6 +54,73 @@ class UnifiedAnimationController {
         
         // Initialize performance monitoring
         this.startPerformanceMonitoring();
+        
+        // Initialize debug overlay
+        this.initDebugOverlay();
+    }
+
+    initDebugOverlay() {
+        // Create debug container if it doesn't exist
+        if (!document.getElementById('debugOverlay')) {
+            const debugOverlay = document.createElement('div');
+            debugOverlay.id = 'debugOverlay';
+            debugOverlay.style.cssText = `
+                position: absolute;
+                top: 10px;
+                left: 10px;
+                background: rgba(0, 0, 0, 0.7);
+                color: white;
+                padding: 10px;
+                border-radius: 5px;
+                font-family: monospace;
+                z-index: 1000;
+                max-width: 400px;
+                max-height: 80vh;
+                overflow-y: auto;
+                font-size: 12px;
+            `;
+            
+            // Add toggle button
+            const toggleButton = document.createElement('button');
+            toggleButton.textContent = 'Toggle Debug';
+            toggleButton.style.cssText = `
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                z-index: 1001;
+                padding: 5px;
+            `;
+            toggleButton.onclick = () => {
+                const overlay = document.getElementById('debugOverlay');
+                if (overlay) {
+                    overlay.style.display = overlay.style.display === 'none' ? 'block' : 'none';
+                }
+            };
+            
+            // Create sections
+            debugOverlay.innerHTML = `
+                <h3>Animation Debug</h3>
+                <div id="animationDebug"></div>
+                <h3>Position Debug</h3>
+                <div id="positionDebug"></div>
+                <h3>Worker Debug</h3>
+                <div id="workerDebug"></div>
+                <h3>Render Debug</h3>
+                <div id="renderDebug"></div>
+            `;
+            
+            document.body.appendChild(debugOverlay);
+            document.body.appendChild(toggleButton);
+            
+            // Initialize debug state
+            this.debugState = {
+                lastPositionUpdate: 0,
+                positionUpdates: [],
+                workerMessages: [],
+                renderUpdates: [],
+                maxEntries: 10
+            };
+        }
     }
 
     setTrackData(data) {
@@ -136,7 +203,20 @@ class UnifiedAnimationController {
         this.state.lastFrameTime = timestamp;
 
         // Update current time
+        const previousTime = this.state.currentTime;
         this.state.currentTime += deltaTime * this.state.speed;
+
+        // Debug animation timing
+        if (document.getElementById('animationDebug')) {
+            document.getElementById('animationDebug').innerHTML = `
+                <div>FPS: ${this.performance.fps}</div>
+                <div>Frame deltaTime: ${deltaTime.toFixed(4)}s</div>
+                <div>Animation speed: ${this.state.speed.toFixed(2)}x</div>
+                <div>Current time: ${this.state.currentTime.toFixed(2)}s</div>
+                <div>Time change: ${(this.state.currentTime - previousTime).toFixed(4)}s</div>
+                <div>Progress: ${((this.state.currentTime / this.state.duration) * 100).toFixed(1)}%</div>
+            `;
+        }
 
         // Check if animation complete
         if (this.state.currentTime >= this.state.duration) {
@@ -172,6 +252,41 @@ class UnifiedAnimationController {
         }
         const prevIndex = Math.max(0, nextIndex - 1);
 
+        // Calculate time since last position update
+        const now = performance.now();
+        const timeSinceLastUpdate = now - (this.debugState?.lastPositionUpdate || 0);
+        this.debugState.lastPositionUpdate = now;
+        
+        // Debug position updates
+        if (document.getElementById('positionDebug')) {
+            // Add this update to history
+            if (this.debugState.positionUpdates.length >= this.debugState.maxEntries) {
+                this.debugState.positionUpdates.shift();
+            }
+            
+            this.debugState.positionUpdates.push({
+                time: time.toFixed(2),
+                prevIndex,
+                nextIndex,
+                totalPoints: this.trackData.features.length,
+                updateInterval: timeSinceLastUpdate.toFixed(0)
+            });
+            
+            // Display current position debug info
+            let positionHtml = '';
+            this.debugState.positionUpdates.forEach((update, i) => {
+                positionHtml += `
+                    <div style="margin-bottom: 5px; ${i === this.debugState.positionUpdates.length - 1 ? 'font-weight: bold;' : ''}">
+                        <div>Animation time: ${update.time}s</div>
+                        <div>Points: ${update.prevIndex} → ${update.nextIndex} of ${update.totalPoints}</div>
+                        <div>Update interval: ${update.updateInterval}ms</div>
+                    </div>
+                `;
+            });
+            
+            document.getElementById('positionDebug').innerHTML = positionHtml;
+        }
+
         // Add null checks before accessing properties
         const prev = this.trackData.features[prevIndex];
         if (!prev || !prev.properties) {
@@ -190,6 +305,24 @@ class UnifiedAnimationController {
         const nextTime = next.properties.timestamp;
         const t = prevTime === nextTime ? 0 : 
                  (targetTime - prevTime) / (nextTime - prevTime);
+        
+        // Add more debug info about interpolation
+        if (document.getElementById('positionDebug')) {
+            const lastUpdate = this.debugState.positionUpdates[this.debugState.positionUpdates.length - 1];
+            if (lastUpdate) {
+                const additionalInfo = document.createElement('div');
+                additionalInfo.innerHTML = `
+                    <div style="margin-top: 5px; border-top: 1px solid #555; padding-top: 5px;">
+                        <div>Interpolation factor (t): ${t.toFixed(4)}</div>
+                        <div>Point time gap: ${((nextTime - prevTime)/1000).toFixed(2)}s</div>
+                        <div>Prev point: [${prev.geometry.coordinates.map(c => c.toFixed(6)).join(', ')}]</div>
+                        <div>Next point: [${next.geometry.coordinates.map(c => c.toFixed(6)).join(', ')}]</div>
+                        <div>Bearing change: ${(next.properties.bearing - prev.properties.bearing).toFixed(2)}°</div>
+                    </div>
+                `;
+                document.getElementById('positionDebug').appendChild(additionalInfo);
+            }
+        }
 
         // Send position data to worker
         this.positionWorker.postMessage({
@@ -214,12 +347,85 @@ class UnifiedAnimationController {
             return;
         }
 
+        // Debug worker messages
+        if (document.getElementById('workerDebug')) {
+            // Calculate time since message was sent
+            const now = performance.now();
+            const workerLatency = now - e.data.timestamp;
+            
+            // Add this message to history
+            if (this.debugState.workerMessages.length >= this.debugState.maxEntries) {
+                this.debugState.workerMessages.shift();
+            }
+            
+            this.debugState.workerMessages.push({
+                position: [position.lng.toFixed(6), position.lat.toFixed(6)],
+                bearing: bearing.toFixed(2),
+                speed: speed?.toFixed(2) || 'N/A',
+                latency: workerLatency.toFixed(1),
+                timestamp: now
+            });
+            
+            // Display worker debug info
+            let workerHtml = '';
+            this.debugState.workerMessages.forEach((msg, i) => {
+                workerHtml += `
+                    <div style="margin-bottom: 5px; ${i === this.debugState.workerMessages.length - 1 ? 'font-weight: bold;' : ''}">
+                        <div>Position: [${msg.position.join(', ')}]</div>
+                        <div>Bearing: ${msg.bearing}°</div>
+                        <div>Speed: ${msg.speed}</div>
+                        <div>Worker latency: ${msg.latency}ms</div>
+                    </div>
+                `;
+            });
+            
+            document.getElementById('workerDebug').innerHTML = workerHtml;
+        }
+
         // Update WebGL layer
         this.webglLayer.updatePosition(
             [position.lng, position.lat],
             bearing,
             speed
         );
+        
+        // Debug render updates
+        if (document.getElementById('renderDebug')) {
+            const now = performance.now();
+            
+            // Calculate time between render updates
+            let renderInterval = 0;
+            if (this.debugState.renderUpdates.length > 0) {
+                const lastRender = this.debugState.renderUpdates[this.debugState.renderUpdates.length - 1];
+                renderInterval = now - lastRender.timestamp;
+            }
+            
+            // Add this update to history
+            if (this.debugState.renderUpdates.length >= this.debugState.maxEntries) {
+                this.debugState.renderUpdates.shift();
+            }
+            
+            this.debugState.renderUpdates.push({
+                position: [position.lng.toFixed(6), position.lat.toFixed(6)],
+                bearing: bearing.toFixed(2),
+                interval: renderInterval.toFixed(1),
+                timestamp: now
+            });
+            
+            // Display render debug info
+            let renderHtml = '';
+            this.debugState.renderUpdates.forEach((update, i) => {
+                renderHtml += `
+                    <div style="margin-bottom: 5px; ${i === this.debugState.renderUpdates.length - 1 ? 'font-weight: bold;' : ''}">
+                        <div>Rendered position: [${update.position.join(', ')}]</div>
+                        <div>Rendered bearing: ${update.bearing}°</div>
+                        <div>Render interval: ${update.interval}ms</div>
+                    </div>
+                `;
+            });
+            
+            document.getElementById('renderDebug').innerHTML = renderHtml;
+        }
 
         // Update camera if locked
         if (this.camera.isLocked) {
@@ -304,6 +510,25 @@ class UnifiedAnimationController {
         };
 
         requestAnimationFrame(monitor);
+    }
+
+    updatePerformance(timestamp) {
+        // Increment frame count
+        this.performance.frameCount++;
+        
+        // Only update FPS calculation occasionally to reduce overhead
+        if (timestamp - this.performance.lastFpsUpdate > 1000) {
+            // Calculate FPS based on frames since last update
+            const secondsPassed = (timestamp - this.performance.lastFpsUpdate) / 1000;
+            const framesSinceLastUpdate = this.performance.frameCount;
+            
+            // Update FPS
+            this.performance.fps = Math.round(framesSinceLastUpdate / secondsPassed);
+            
+            // Reset counters
+            this.performance.lastFpsUpdate = timestamp;
+            this.performance.frameCount = 0;
+        }
     }
 
     adjustQuality() {
