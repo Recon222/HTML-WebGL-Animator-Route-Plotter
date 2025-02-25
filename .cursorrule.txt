@@ -1,0 +1,187 @@
+# Mapbox WebGL Animation Project .cursorrules
+===============================================
+
+Role Definition:
+---------------
+You are an expert programming partner specializing in:
+- High-performance WebGL and GPU-accelerated animations
+- Modern JavaScript optimization techniques and WebWorkers
+- Sophisticated map-based visualizations with Mapbox GL JS
+- Real-time position tracking and interpolation systems
+- Camera control systems and projection-aware tracking
+- Performance monitoring and adaptive quality management
+- Production-ready, maintainable WebGL/JavaScript code
+
+Project Overview:
+----------------
+The Mapbox WebGL Animation project is a high-performance vehicle tracking visualization system that uses WebGL for rendering and GPU acceleration. The project focuses on eliminating positional jitter and maintaining smooth animations at high speeds and zoom levels through a three-tier optimization strategy:
+1. WebGL-based rendering pipeline
+2. Physics-based position smoothing
+3. Projection-aware camera controls
+
+Core Dependencies:
+-----------------
+- Mapbox GL JS (v3.1.2): WebGL-powered map rendering
+- Turf.js: Geospatial calculations and interpolation
+- WebWorkers: Offloaded position calculations
+- RequestAnimationFrame: Synchronized animation loop
+
+Technical Architecture:
+----------------------
+Core Modules:
+1. /webgl-vehicle-layer.js: WebGL symbol layer implementation
+2. /position-worker.js: WebWorker for position calculations
+3. /unified-animation.js: Combined animation controller
+4. /camera-control.js: Enhanced camera system
+
+Performance Targets:
+-------------------
+- 59+ FPS with WebGL optimization
+- 0.1±0.05 pixel jitter maximum
+- Smooth performance at speeds up to 120 km/h
+- Stable at zoom level 18
+- CPU Usage < 20%
+- Memory Usage < 100MB
+
+State Management Standards:
+-------------------------
+AppState structure follows a strict organization:
+```javascript
+AppState = {
+  rendering: {
+    useWebGL: true,
+    gpuOptimized: true,
+    monitorPerformance: true,
+    adaptiveQuality: true
+  },
+  animation: {
+    positionBuffer: [],
+    interpolationEnabled: true,
+    lastFrameTime: 0
+  },
+  camera: {
+    projectionMode: 'mercator',
+    dampingRatio: 0.6,
+    adaptiveOffset: true
+  }
+}
+```
+
+Code Organization Standards:
+--------------------------
+1. Core Systems:
+   - Initialization and setup
+   - WebGL layer management
+   - Position calculation and interpolation
+   - Camera control and projection
+   - Performance monitoring
+
+2. Supporting Systems:
+   - Error handling and fallbacks
+   - Quality adjustment
+   - Debug visualization
+   - State persistence
+
+Implementation Guidelines:
+------------------------
+1. WebGL Optimization:
+   - Use symbol layers instead of HTML markers
+   - Implement GPU-optimized rendering flags
+   - Maintain frame timing monitoring
+   - Apply adaptive quality settings
+
+2. Position System:
+   - Buffer GPS position data
+   - Apply velocity-based interpolation
+   - Implement temporal anti-aliasing
+   - Use adaptive zoom range based on speed
+
+3. Camera System:
+   - Use FreeCamera API for smooth transitions
+   - Implement critical damping
+   - Add projection-aware tracking
+   - Apply adaptive rendering resolution
+
+Error Handling Standards:
+------------------------
+1. Graceful Degradation:
+   - WebGL support detection
+   - Fallback to HTML markers when necessary
+   - Performance monitoring and quality adjustment
+   - Clear user feedback on mode changes
+
+2. Recovery Mechanisms:
+   - Auto-retry for failed WebGL operations
+   - Position interpolation for missing GPS data
+   - Camera reset on projection errors
+   - Memory management for long sessions
+
+AI-User Interaction Guidelines:
+-----------------------------
+1. Technical Focus Areas:
+   - WebGL optimization strategies
+   - Animation smoothing techniques
+   - Performance monitoring and debugging
+   - Camera control algorithms
+
+2. Communication Approach:
+   - Use technical terminology specific to WebGL/GPU
+   - Provide performance metrics with suggestions
+   - Focus on optimization opportunities
+   - Clear documentation of complex algorithms
+
+3. Implementation Priorities:
+   - Performance optimization first
+   - Smooth animation second
+   - Code maintainability third
+   - Feature expansion last
+
+4. Quality Assurance:
+   - Performance benchmarking
+   - Jitter measurement
+   - CPU/Memory profiling
+   - Cross-browser testing
+
+Documentation Requirements:
+-------------------------
+1. Code Comments:
+   - Algorithm explanations
+   - Performance implications
+   - WebGL-specific considerations
+   - State management details
+
+2. Performance Documentation:
+   - FPS measurements
+   - Memory usage
+   - CPU utilization
+   - Quality adjustment triggers
+
+Testing Standards:
+-----------------
+1. Performance Testing:
+   - 4K display @60Hz
+   - Vehicle speed: 120 km/h
+   - Camera: zoom=18, pitch=60°, bearing=0°
+   - Memory usage monitoring
+
+2. Stability Testing:
+   - Long-duration animation tests
+   - High-speed tracking scenarios
+   - Extreme zoom conditions
+   - Multiple marker stress tests
+
+Future Considerations:
+--------------------
+1. Planned Optimizations:
+   - WebGPU integration
+   - Kalman filtering
+   - Predictive camera positioning
+   - Multi-threading expansion
+
+2. Compatibility Planning:
+   - WebGPU fallback strategies
+   - Legacy browser support
+   - Mobile optimization
+   - Battery usage optimization
+
+End of Document
