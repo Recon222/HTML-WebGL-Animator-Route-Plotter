@@ -269,6 +269,12 @@ function setupEventListeners() {
         AppState.animationController.seekTo(newTime);
     };
     
+    // Camera lock button
+    document.getElementById('cameraLockButton').onclick = () => {
+        AppState.animationController.toggleCameraLock();
+        updateCameraLockButtonState();
+    };
+    
     // Speed controls
     document.querySelectorAll('.speed-button').forEach(button => {
         button.onclick = () => {
@@ -369,6 +375,27 @@ function updatePlaybackButtonState() {
     const button = document.getElementById('playButton');
     const icon = button.querySelector('.material-icons');
     icon.textContent = AppState.animation.isPlaying ? 'pause' : 'play_arrow';
+}
+
+function updateCameraLockButtonState() {
+    const button = document.getElementById('cameraLockButton');
+    if (AppState.animationController && button) {
+        const isLocked = AppState.animationController.camera.isLocked;
+        
+        // Update button visual state
+        if (isLocked) {
+            button.classList.add('active');
+            button.querySelector('.material-icons').textContent = 'videocam_lock';
+            showNotification('Camera locked to vehicle', 'info');
+        } else {
+            button.classList.remove('active');
+            button.querySelector('.material-icons').textContent = 'videocam';
+            showNotification('Camera unlocked', 'info');
+        }
+        
+        // Update AppState
+        AppState.camera.isLocked = isLocked;
+    }
 }
 
 // Map Style Preview Updates

@@ -190,9 +190,36 @@ class UnifiedAnimationController {
 
     toggleCameraLock() {
         this.camera.isLocked = !this.camera.isLocked;
+        
+        // Debug information for camera lock
+        console.log(`Camera lock ${this.camera.isLocked ? 'enabled' : 'disabled'}`);
+        
         if (this.camera.isLocked) {
             this.updateCameraOffset();
+            console.log('Camera offset updated:', this.camera.offset);
+            
+            // Add to debug overlay if it exists
+            if (document.getElementById('debugOverlay')) {
+                const cameraDebugSection = document.getElementById('animationDebug');
+                if (cameraDebugSection) {
+                    const cameraDebugInfo = document.createElement('div');
+                    cameraDebugInfo.style.borderTop = '1px solid #555';
+                    cameraDebugInfo.style.marginTop = '8px';
+                    cameraDebugInfo.style.paddingTop = '8px';
+                    cameraDebugInfo.innerHTML = `
+                        <div><strong>Camera Lock Debug:</strong></div>
+                        <div>Lock Status: ${this.camera.isLocked ? 'Locked' : 'Unlocked'}</div>
+                        <div>Offset X: ${this.camera.offset?.x?.toFixed(6) || 'N/A'}</div>
+                        <div>Offset Y: ${this.camera.offset?.y?.toFixed(6) || 'N/A'}</div>
+                        <div>Zoom: ${this.camera.offset?.zoom?.toFixed(2) || 'N/A'}</div>
+                        <div>Damping: ${this.camera.dampingRatio}</div>
+                    `;
+                    cameraDebugSection.appendChild(cameraDebugInfo);
+                }
+            }
         }
+        
+        return this.camera.isLocked; // Return current state
     }
 
     animate(timestamp) {
@@ -451,6 +478,62 @@ class UnifiedAnimationController {
             duration: 0,  // Immediate update for smoothness
             easing: t => t  // Linear easing
         });
+        
+        // Add debug information for camera follow pipeline
+        if (document.getElementById('debugOverlay')) {
+            // Find or create camera follow debug section
+            let cameraFollowDebug = document.getElementById('cameraFollowDebug');
+            if (!cameraFollowDebug) {
+                const debugOverlay = document.getElementById('debugOverlay');
+                if (debugOverlay) {
+                    const sectionHeader = document.createElement('h3');
+                    sectionHeader.textContent = 'Camera Follow Debug';
+                    debugOverlay.appendChild(sectionHeader);
+                    
+                    cameraFollowDebug = document.createElement('div');
+                    cameraFollowDebug.id = 'cameraFollowDebug';
+                    debugOverlay.appendChild(cameraFollowDebug);
+                }
+            }
+            
+            if (cameraFollowDebug) {
+                // Track last 5 camera updates
+                if (!this.cameraDebugHistory) {
+                    this.cameraDebugHistory = [];
+                }
+                
+                // Add latest update
+                this.cameraDebugHistory.unshift({
+                    timestamp: new Date().toISOString().split('T')[1].split('Z')[0],
+                    vehiclePos: [position.lng.toFixed(6), position.lat.toFixed(6)],
+                    targetPos: [targetPosition[0].toFixed(6), targetPosition[1].toFixed(6)],
+                    bearing: bearing.toFixed(2),
+                    offset: [offset.x.toFixed(6), offset.y.toFixed(6)]
+                });
+                
+                // Keep only last 5 updates
+                if (this.cameraDebugHistory.length > 5) {
+                    this.cameraDebugHistory.pop();
+                }
+                
+                // Render debug info
+                let debugHtml = '<div style="max-height: 200px; overflow-y: auto;">';
+                this.cameraDebugHistory.forEach((update, i) => {
+                    debugHtml += `
+                        <div style="margin-bottom: 8px; padding-bottom: 5px; ${i === 0 ? 'font-weight: bold;' : ''} ${i > 0 ? 'border-bottom: 1px dotted #555;' : ''}">
+                            <div>Time: ${update.timestamp}</div>
+                            <div>Vehicle: [${update.vehiclePos.join(', ')}]</div>
+                            <div>Target: [${update.targetPos.join(', ')}]</div>
+                            <div>Bearing: ${update.bearing}°</div>
+                            <div>Offset: [${update.offset.join(', ')}]</div>
+                        </div>
+                    `;
+                });
+                debugHtml += '</div>';
+                
+                cameraFollowDebug.innerHTML = debugHtml;
+            }
+        }
     }
 
     calculateCameraOffset(bearing) {
