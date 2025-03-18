@@ -469,6 +469,10 @@ class UnifiedAnimationController {
             position.lng + offset.x,
             position.lat + offset.y
         ];
+        
+        // Apply latitude bounds to prevent extreme positions
+        if (targetPosition[1] < -85) targetPosition[1] = -85;
+        if (targetPosition[1] > 85) targetPosition[1] = 85;
 
         // Apply smooth transition
         this.map.easeTo({
@@ -537,11 +541,18 @@ class UnifiedAnimationController {
     }
 
     calculateCameraOffset(bearing) {
-        // Convert bearing to radians
-        const rad = (bearing - 90) * Math.PI / 180;
+        // Position camera behind the vehicle (opposite of vehicle bearing)
+        const rad = ((bearing + 180) % 360) * Math.PI / 180;
         
-        // Calculate offset based on zoom level and speed
-        const distance = Math.pow(2, 20 - this.map.getZoom()) * this.camera.offset.zoom;
+        // Fixed base distance (in longitude/latitude degrees)
+        const baseDistance = 0.001; 
+        
+        // More modest zoom scaling (1.5x distance for each zoom level decrease)
+        const zoomLevel = this.map.getZoom();
+        const zoomFactor = Math.pow(1.5, 15 - zoomLevel);
+        
+        // Apply zoom factor with reasonable limits
+        const distance = baseDistance * Math.min(Math.max(zoomFactor, 0.5), 5);
         
         return {
             x: Math.cos(rad) * distance,
@@ -552,16 +563,33 @@ class UnifiedAnimationController {
     updateCameraOffset() {
         if (!this.camera.isLocked) return;
         
-        const center = this.map.getCenter();
         const vehiclePosition = this.webglLayer.getCurrentPosition();
-        
         if (!vehiclePosition) return;
         
+        // Get current vehicle bearing
+        const bearing = this.webglLayer.getCurrentBearing ? 
+                       this.webglLayer.getCurrentBearing() : 0;
+        
+        // Use our improved offset calculation
+        const offset = this.calculateCameraOffset(bearing);
+        
+        // Store offset values
         this.camera.offset = {
-            x: center.lng - vehiclePosition[0],
-            y: center.lat - vehiclePosition[1],
+            x: offset.x,
+            y: offset.y,
             zoom: this.map.getZoom()
         };
+        
+        // Immediately move camera to proper position behind vehicle
+        this.map.easeTo({
+            center: [
+                vehiclePosition[0] + offset.x,
+                vehiclePosition[1] + offset.y
+            ],
+            bearing: bearing,
+            pitch: 60,
+            duration: 300  // Short, smooth transition
+        });
     }
 
     startPerformanceMonitoring() {
